@@ -51,27 +51,35 @@ io.on('connection', function(socket){
 	    GR[socket.room]['users'][socket.username]++;
 	})
 });
+
+/**
+	startGame() : creates a running game
+	param {room}: string roomname
+
+	returns void
+**/
 function startGame(room){
-    io.to(room).emit('starting');
-    setTimeout(() => {
-        io.to(room).emit('started', GR[room]);
-        let upd = setInterval(()=>{
-            let copy = GR[room]
-            delete copy['article']
-            io.to(room).emit('update', copy)
+    io.to(room).emit('starting'); //Send til alle klienter i rommet "starting", spillet starter straks
+    setTimeout(() => {	//Timeout, vent 3 sekunder
+        io.to(room).emit('started', GR[room]);	//Send til klienter, spillet har startet
+        let upd = setInterval(()=>{ //Vi lager en interval som oppdaterer klientene 5 ganger i sekundet
+            //Bruker oppdateres om romstatus
+            let copy = GR[room]	//VI lager en kopi av rom-objektet
+            delete copy['article'] //Vi gjør det for å fjerne artikkelen fra objektet uten å fjerne fra original
+            //Artikkel-objektet er unødvendig for brukeren å få oppdatert, derfor fjerner vi for å forminske hvor tung appen blir
+            io.to(room).emit('update', copy)  // Oppdater alle klienter i rommet om spill-status
         },200)
-        setTimeout(()=> {
-            io.to(room).emit('done', GR[room])
-            clearInterval(upd)
+        setTimeout(()=> { //Timeout, 60 sekunder, vi venter med å stoppe spillet i 60 sekunder
+            io.to(room).emit('done', GR[room]) //Når spillet er ferdig forteller i klient
+            clearInterval(upd) // Stopper oppdaterings-intervall
             setTimeout(()=> {
-                gameFinished(room)
+                gameFinished(room) //etter 10 sekunder fjerner vi rommet, slik at det ikke blir overflødig
             },10000)
         },60000)
     },3000)
-
 }
 async function getWords(){
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => { 
         newsapi.v2.everything({
             sources: ['nrk','aftenposten'],
             pageSize:5,
